@@ -1,0 +1,1 @@
+@include('errors.layout', ['errorCode' => '404', 'errorTitle' => 'Không tìm thấy trang', 'errorDescription' => 'Trang bạn tìm có thể đã được chuyển hoặc đường dẫn chưa chính xác. Hãy trở về và thử lại.'])

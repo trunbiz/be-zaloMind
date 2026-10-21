@@ -1,0 +1,47 @@
+:root, [data-bs-theme="light"] {
+    --zm-primary: #1A56DB;
+    --zm-primary-hover: #1649B9;
+    --zm-indigo: #4338CA;
+    --zm-success: #10B981;
+    --zm-bg: #F5F7FB;
+    --zm-surface: #FFFFFF;
+    --zm-surface-muted: #F8FAFD;
+    --zm-text: #172B4D;
+    --zm-muted: #61718A;
+    --zm-border: #E4E9F2;
+    --zm-primary-soft: #EDF3FF;
+    --zm-shadow: 0 4px 24px #172B4D06;
+    --zm-radius: 12px;
+    --zm-font: 'Be Vietnam Pro', sans-serif;
+    --zm-gradient: linear-gradient(110deg, #1A56DB, #4338CA);
+}
+[data-bs-theme="dark"] {
+    --zm-primary: #88AEFF;
+    --zm-primary-hover: #A6C2FF;
+    --zm-bg: #101827;
+    --zm-surface: #182235;
+    --zm-surface-muted: #1C283D;
+    --zm-text: #E5EAF4;
+    --zm-muted: #A6B4CA;
+    --zm-border: #2D3A51;
+    --zm-primary-soft: #203356;
+    --zm-shadow: 0 4px 24px #00000012;
+}
+:root, [data-bs-theme] {
+    --bs-primary: var(--zm-primary);
+    --bs-primary-rgb: 26, 86, 219;
+    --bs-success: var(--zm-success);
+    --bs-success-rgb: 16, 185, 129;
+    --bs-body-font-family: var(--zm-font);
+    --bs-body-bg: var(--zm-bg);
+    --bs-body-color: var(--zm-text);
+    --bs-body-color-rgb: 23, 43, 77;
+    --bs-secondary-color: var(--zm-muted);
+    --bs-tertiary-bg: var(--zm-surface-muted);
+    --bs-border-color: var(--zm-border);
+    --bs-border-color-translucent: var(--zm-border);
+    --bs-border-radius: var(--zm-radius);
+    --bs-link-color: var(--zm-primary);
+    --bs-link-hover-color: var(--zm-primary-hover);
+}
+[data-bs-theme="dark"] { --bs-primary-rgb: 136, 174, 255; --bs-body-color-rgb: 229, 234, 244; }

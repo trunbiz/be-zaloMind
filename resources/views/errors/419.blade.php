@@ -1,0 +1,1 @@
+@include('errors.layout', ['errorCode' => '419', 'errorTitle' => 'Phiên làm việc đã hết hạn', 'errorDescription' => 'Vui lòng tải lại trang hoặc đăng nhập để tiếp tục. Dữ liệu chưa gửi có thể cần được nhập lại.'])

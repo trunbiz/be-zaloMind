@@ -1,0 +1,1 @@
+@include('errors.layout', ['errorCode' => '403', 'errorTitle' => 'Bạn không có quyền truy cập', 'errorDescription' => 'Tài khoản của bạn chưa được cấp quyền truy cập khu vực này. Vui lòng quay về không gian làm việc.'])
