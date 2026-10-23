@@ -12,7 +12,13 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('platform:tick')->everyMinute()->withoutOverlapping();
+        $schedule->call(function () {
+            \Illuminate\Support\Facades\DB::transaction(function () {
+                \Illuminate\Support\Facades\DB::table('agent_runtime')->where('id', 1)->lockForUpdate()->first();
+                app(\App\Services\AgentEvents::class)->cleanupQr();
+            });
+        })->name('agent-qr-cleanup')->everyMinute()->withoutOverlapping();
     }
 
     /**

@@ -22,6 +22,7 @@ button, input, select { font: inherit; }
 .card-header { padding: 1.3rem 1.5rem; background: transparent; border-bottom-color: var(--zm-border); }
 .card-body { padding: 1.5rem; }
 .card-footer { background: var(--zm-surface-muted); padding: 1rem 1.5rem; }
+.chat-bubble-own { background: #1A56DB; color: #fff; }
 .form-control, .form-select { padding: .72rem .85rem; background-color: var(--zm-surface); border-color: var(--zm-border); font-size: .875rem; }
 .form-control:focus, .form-select:focus { border-color: var(--zm-primary); box-shadow: 0 0 0 .2rem rgb(var(--bs-primary-rgb) / 12%); }
 .form-label { font-weight: 500; font-size: .85rem; }

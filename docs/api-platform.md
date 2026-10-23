@@ -1,8 +1,10 @@
-# API người dùng và quản trị zaloMind — v1 đề xuất
+# API người dùng và quản trị zaloMind — v1
 
-Ngày: 20/10/2026. **Tài liệu thiết kế, chưa phải danh sách API đã chạy.**
-Hiện chỉ có `GET /api/user` dùng Sanctum trong `routes/api.php`; chưa có token login API,
-model đơn hàng/gói hoặc controller nghiệp vụ. Các route giao diện `/admin/*` không phải API.
+Ngày soạn: 20/10/2026. Cập nhật triển khai: 21/10/2026.
+**Các API v1 người dùng/admin và 12 API agent đã có mã nguồn, migration và kiểm thử.**
+Route API nằm trong `routes/platform.php` và `routes/api.php`.
+Các route giao diện `/admin/*` không phải API; API admin dùng `/api/v1/admin/*`.
+Xem [hướng dẫn vận hành và phạm vi chức năng](platform-implementation.md).
 
 Tài liệu này dành cho APP frontend/mobile hoặc đội xây backend người dùng/admin.
 Nếu APP là agent chạy phiên Zalo, dùng [hợp đồng App A](api-app-integration.md).
@@ -11,7 +13,7 @@ Nếu APP là agent chạy phiên Zalo, dùng [hợp đồng App A](api-app-inte
 
 Base: `https://<domain-web>/api/v1`. JSON UTF-8; thời gian UTC RFC 3339; ID UUID chuỗi,
 ID Zalo chuỗi. Tiền là số nguyên đơn vị VND, `currency=VND`; không dùng float.
-Xác thực Bearer token; token user/admin tách hoàn toàn token node. Quyền admin phải kiểm
+Xác thực Bearer token; token user/admin tách hoàn toàn key chung `AGENT_API_KEY` của agent. Quyền admin phải kiểm
 ở server trên từng request, không chỉ ẩn menu. User chỉ truy cập tài nguyên của mình;
 truy cập chéo chủ sở hữu trả 404, user vào admin trả 403.
 
@@ -29,7 +31,8 @@ Lỗi:
 HTTP: 200 đọc/sửa/action; 201 tạo; 202 tạo tác vụ bất đồng bộ; 204 xóa không có body;
 401 token sai/hết hạn; 403 thiếu quyền; 404 không tồn tại; 409 xung đột trạng thái;
 422 validation; 429 rate limit có `Retry-After`; 500/503 lỗi tạm thời.
-`POST` tạo đơn, hủy/hoàn tiền và tạo job phải có `Idempotency-Key: <uuid>`.
+Mọi `POST` thay đổi dữ liệu nghiệp vụ phải có `Idempotency-Key: <uuid>`;
+`/auth/login` và `/auth/logout` không yêu cầu header này.
 Server lưu khóa tối thiểu 30 ngày theo user/method/path; cùng key khác body trả 409.
 Các POST khác cũng hỗ trợ khóa nếu client cần retry an toàn.
 
@@ -37,6 +40,13 @@ Mỗi resource trả `version` số nguyên. PATCH và các action thay đổi r
 gửi `expected_version`; khác phiên bản hiện tại trả `409 VERSION_CONFLICT`.
 Các body trong bảng chỉ liệt kê trường nghiệp vụ, cần thêm expected_version khi áp dụng.
 Không chấp nhận mass assignment ngoài danh sách trường cho phép.
+
+Cập nhật 22/10/2026: login-qr, logout và DELETE profile không yêu cầu expected_version;
+đây là các thao tác theo ý định, được chống trùng bằng Idempotency-Key và yêu cầu kết nối
+hiện tại. Login lại dùng lệnh còn hiệu lực; đã connected trả 200 thay vì tạo QR mới.
+Logout tự dừng hàng đợi. DELETE gỡ profile khỏi web ngay, trả deleted=true và
+logout_command_id nếu cần agent dọn phiên; trả 202 nếu còn chờ agent, 200 nếu đã xử lý
+tại web. meta.message giải thích trạng thái cho người dùng. Lịch sử/hạn mức không bị xóa.
 
 ## 2. Đăng nhập và tài khoản
 
@@ -80,14 +90,16 @@ không ngầm coi các endpoint Blade đó là JSON API.
 | POST `/orders` | `plan_id,billing_period=monthly|yearly` | 201 Order; server tự tính giá |
 | GET `/orders` | `status` | Order của user |
 | GET `/orders/{id}` | — | Order kèm payment instructions nếu đã cấu hình |
-| POST `/orders/{id}/cancel` | `{}` | Order; chỉ cho pending |
+| POST `/orders/{id}/cancel` | `expected_version` | Order; chỉ cho pending |
 
 Profile: `id,display_name,status,zalo_user_id,connected_at,last_seen_at,created_at,version`.
 Command: `id,type,profile_id,status,progress_percent,cancel_requested,output,error,created_at,finished_at,version`.
 Contact/Group, recipient/content và trạng thái command theo [hợp đồng agent](api-app-integration.md).
 User không được truyền node_id, execution_key, giá tiền hoặc trạng thái thanh toán.
 Đơn giá được chụp vào order tại thời điểm tạo; sửa gói không sửa đơn đã tạo.
-Profile chưa được admin giao node trả `409 PROFILE_UNASSIGNED` khi yêu cầu chạy lệnh.
+P0 web tự giao profile cho agent mặc định; không yêu cầu admin tạo node trước.
+Nếu agent chưa sẵn sàng, lệnh chờ queued; profile chưa có assignment nội bộ hợp lệ trả
+`409 PROFILE_UNASSIGNED` để backend xử lý, user không phải nhập Node ID.
 
 Ví dụ gửi tin:
 
@@ -132,7 +144,9 @@ Subscription: `id,user_id,plan_id,status,starts_at,ends_at,limits_snapshot,versi
 Order: `id,number,user_id,plan_id,plan_snapshot,billing_period,amount_vnd,currency,status,
 payment_status,paid_at,created_at,version`.
 `status=pending|paid|cancelled|expired|refunded`; `payment_status=unpaid|paid|refunded`.
-Payment: `id,order_id,method,reference,amount_vnd,currency,status,confirmed_at,version`.
+Thanh toán hiện được lưu trực tiếp trên Order qua `payment_reference,paid_at`;
+`GET /admin/payments` trả các Order paid/refunded, chưa dùng bảng Payment độc lập.
+Confirm-payment trả Order đã cập nhật; đọc chi tiết order có `subscriptions` liên quan.
 
 | Method + path | Input | Response / ràng buộc |
 | --- | --- | --- |
@@ -152,13 +166,13 @@ P0 dùng xác nhận chuyển khoản thủ công, **không có API tự chuyể
 Confirm chỉ nhận đơn pending, đúng tiền/currency và reference duy nhất theo phương thức;
 trong một transaction ghi payment, đổi order và cấp/gia hạn subscription đúng một lần.
 Khóa hàng khi confirm để hai admin không cộng thời hạn hai lần.
-Gói tháng/năm cộng 1 tháng/1 năm lịch theo UTC, chặn tràn ngày về ngày cuối tháng.
+Gói tháng/năm cộng 1 tháng/1 năm lịch theo Asia/Ho_Chi_Minh, chặn tràn ngày về ngày cuối tháng.
 Gia hạn cùng gói từ `max(now,ends_at)`; đổi gói khi còn subscription active trả
 `409 ACTIVE_SUBSCRIPTION_CONFLICT` trong P0, chưa tính prorate.
 Refund P0 chỉ toàn bộ, chỉ đơn paid, tiền bằng số tiền đơn; không gọi provider để hoàn tiền.
 Nếu subscription của đơn đã được dùng/gia hạn tiếp, trả `409 REFUND_REVIEW_REQUIRED`;
 chỉ hỗ trợ tự cập nhật khi subscription chưa bắt đầu và chưa có đơn nối tiếp, khi đó hủy subscription.
-Webhook cổng thanh toán sẽ có hợp đồng riêng sau khi chọn provider, không dùng node token.
+Webhook cổng thanh toán sẽ có hợp đồng riêng sau khi chọn provider, không dùng key agent.
 
 Ví dụ admin xác nhận đơn:
 
@@ -178,12 +192,9 @@ Content-Type: application/json
 | Method + path | Input | Response / ràng buộc |
 | --- | --- | --- |
 | GET `/admin/nodes` | `status` | `id,name,status,last_heartbeat_at,app_version,capabilities,version` |
-| POST `/admin/nodes` | `name,max_concurrency` | 201 node + node_token một lần |
-| POST `/admin/nodes/{id}/rotate-token` | `reason` | node_token mới một lần; thu hồi token cũ |
 | POST `/admin/nodes/{id}/disable` | `reason` | Node; dừng claim, xử lý lệnh dang dở qua đối soát |
-| POST `/admin/nodes/{id}/enable` | `reason` | Node; không tự cấp lại token đã thu hồi |
+| POST `/admin/nodes/{id}/enable` | `reason` | Node; bật nhận lệnh |
 | GET `/admin/profiles` | `user_id,node_id,status,q` | Profiles kèm owner/node |
-| PUT `/admin/profiles/{id}/assignment` | `node_id,reason` | Profile + assignment_version mới |
 | GET `/admin/commands` | `user_id,node_id,profile_id,status,type` | Commands |
 | GET `/admin/commands/{id}` | — | Command, attempts và kết quả; bỏ lease_token |
 | POST `/admin/commands/{id}/cancel` | `reason` | Command |
@@ -198,8 +209,11 @@ Content-Type: application/json
 
 Announcement dùng plain text; title tối đa 200 ký tự, body 10.000 ký tự;
 expires_at phải sau published_at. `GET /announcements` cho user trả thông báo đang hiệu lực.
-Đổi node phải không còn command đang chạy/unknown và phải dừng worker cũ;
-việc chuyển session Zalo giữa máy chưa nằm trong P0. Resolve chỉ ghi nhận kết quả có chứng cứ,
+P0 dùng một agent logic và node mặc định do web tự quản lý. Không có API tạo node,
+cấp/rotate token hoặc gán profile sang máy khác. APP dùng key chung `AGENT_API_KEY`
+trong `.env` theo [hợp đồng agent](api-app-integration.md#3-cấu-hình-key-chung-và-khởi-động-agent).
+API danh sách/bật/tắt node chỉ phục vụ theo dõi agent mặc định; key không được trả qua API admin.
+Việc chuyển session Zalo giữa máy chưa nằm trong P0. Resolve chỉ ghi nhận kết quả có chứng cứ,
 không tự gửi lại hoặc trừ quota thêm. Không có endpoint retry lệnh unknown tự động.
 
 Audit: `id,actor_id,action,resource_type,resource_id,reason,before,after,request_id,created_at`;
@@ -207,20 +221,43 @@ ghi cùng transaction thay đổi nghiệp vụ. Che password/token/QR và dữ 
 API admin không được sửa/xóa audit. Mọi action quản trị có reason bắt buộc 5–1.000 ký tự.
 Dashboard revenue_paid_vnd là tổng paid amount trừ đơn đã refunded, không phải số dư ngân hàng.
 
-## 7. Phạm vi chưa chốt
+## 7. Các API nghiệp vụ bổ sung đã có
 
-Các menu affiliate, proxy, kiểm duyệt, campaign/batch, automation, báo cáo chi tiết
-và inbox đã có ở khung giao diện nhưng **chưa đủ quy tắc nghiệp vụ để chốt API**.
-Không coi đường dẫn menu là chức năng backend đã hoàn tất. Trước khi đội APP làm các màn này
-cần bổ sung schema và workflow: hoa hồng/đối soát, nguồn proxy, quy tắc kiểm duyệt,
-khung giờ/tần suất chiến dịch và quyền truy cập hội thoại.
+- `GET/POST /customers`, `PATCH/DELETE /customers/{id}`, `POST /customers/import`:
+  các trường giống biểu mẫu Khách hàng; import dùng csv_text hoặc file csv_file cùng list_name.
+- `GET/POST /opt-outs`, `DELETE /opt-outs/{id}`: tạo dùng recipient và reason.
+- `GET /campaigns`, `POST /campaigns/{id}/pause|resume|cancel`: expected_version.
+- `GET /automations`, `POST /automations/{id}/pause|activate`, `DELETE /automations/{id}`.
+- `POST /operations/{section}` với section là message-friends, message-groups, message-lists,
+  message-phones, message-labels, message-birthdays, friend-invites, scan-members, scan-links,
+  group-invite, group-join, group-check, group-leave, automation-labels, drip, rotation.
+  Body là các trường biểu mẫu tương ứng; các tên trường và định dạng được liệt kê ở
+  [hướng dẫn vận hành](platform-implementation.md).
+- `POST /operations/message-birthdays/rule`: name, profile_id, text,
+  source=message-birthdays, interval_minutes=1440.
+- `GET /commissions`, `POST /commissions/{id}/request` cho user;
+  admin có GET /admin/commissions và POST /admin/commissions/{id}/approve|paid.
+  paid cần reference, reason và expected_version; đây là ghi nhận tiền đã chuyển ngoài hệ thống.
+- `GET /inbox`, `GET /friend-requests`, `GET /friends`, `GET /group-list` đọc dữ liệu
+  đồng bộ theo owner, có thể lọc profile_id; các hàng trả id nội bộ, profile_id và data.
+  `/inbox` còn lọc bằng `conversation_type=user|group` và `conversation_id` để đọc đúng hội thoại.
+  Có GET /{resource}/{id} cho một hàng. `POST /inbox/{id}/read` đánh dấu đã đọc,
+  `POST /friend-requests/{id}/accept` tạo lệnh chấp nhận, `POST /friends/sync` dùng profile_id.
+- Admin: `GET/POST /admin/proxies`, `PATCH/DELETE /admin/proxies/{id}`;
+  `PUT /admin/profiles/{id}/proxy` dùng proxy_id nullable và expected_version.
+  Mật khẩu proxy không được trả qua API user/admin.
+- Admin: `POST /admin/commands/{id}/approve`, `POST /admin/moderation/words`,
+  `DELETE /admin/moderation/words/{id}`. Từ khóa dùng trường title.
+
+Tất cả dữ liệu người dùng được giới hạn theo owner tại server. Các action sửa/xóa
+có expected_version; POST có Idempotency-Key. Cấu hình hệ thống hỗ trợ thêm bank_name,
+bank_account, bank_holder, payment_note, affiliate_percent và moderation_required.
 
 ## 8. Bàn giao và nghiệm thu
 
-Đội backend cần triển khai migration/model/policy/controller và token API trước;
-đội APP có thể dựng màn hình và mock JSON theo tài liệu. Base URL staging và token thử
-do người vận hành cấp riêng, không ghi vào Git. Không có API mới nào đã được kiểm thử HTTP
-chỉ nhờ việc viết tài liệu này.
+Backend đã triển khai migration, kiểm quyền, controller và token API. Base URL local:
+`http://zalomind.local/api/v1`; domain production do người vận hành cấu hình.
+User/admin lấy token qua /auth/login; agent dùng key .env. Không ghi token/key vào Git.
 
 Kiểm thử bắt buộc: phân quyền user/admin/node và truy cập chéo owner; token hết hạn/thu hồi;
 hai admin confirm cùng đơn; replay idempotency; sửa resource với version cũ; khóa user;

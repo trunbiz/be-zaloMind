@@ -25,6 +25,12 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
+            if ($request->is('api/v1/agent/*')) {
+                $control = $request->is('api/v1/agent/heartbeat', 'api/v1/agent/commands/*/lease');
+
+                return Limit::perMinute($control ? 240 : 120)->by('agent:'.($control ? 'control' : 'data'));
+            }
+
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 

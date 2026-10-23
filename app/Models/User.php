@@ -13,6 +13,15 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
+    protected $attributes = ['status' => 'active', 'version' => 1];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $user) {
+            $user->referral_code ??= (string) \Illuminate\Support\Str::uuid();
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *

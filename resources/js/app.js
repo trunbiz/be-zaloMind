@@ -1,6 +1,7 @@
 import './workspace';
 import './data-table';
 import './bootstrap';
+import './platform';
 import * as bootstrap from 'bootstrap';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';

@@ -1,5 +1,10 @@
 # zaloMind
 
+Cập nhật 21/10/2026: đã triển khai giao diện nghiệp vụ người dùng/admin,
+API người dùng/admin và 12 API agent dùng key chung `AGENT_API_KEY`.
+Xem [hướng dẫn vận hành](docs/platform-implementation.md),
+[API agent](docs/api-app-integration.md) và [API nền tảng](docs/api-platform.md).
+
 Chăm sóc khách hàng Zalo thông minh.
 
 ## Trạng thái triển khai
@@ -20,11 +25,13 @@ topbar, dark mode, command palette Ctrl+K, toast, modal xác nhận, trang lỗi
 403/404/419/500 và các Blade component nền. Menu nằm trong config/menu.php;
 được lọc theo vai trò/quyền và dùng cùng nguồn cho sidebar, tìm kiếm và route.
 
-Các trang nghiệp vụ hiện hiển thị trạng thái chuẩn bị và giai đoạn triển khai;
-chưa thực hiện thao tác gửi tin, kết nối Zalo hoặc thanh toán.
-Bảng admin dùng số tài khoản thực. Chưa triển khai schema nghiệp vụ/gói,
-agent API/QR, batch, automation, báo cáo và thanh toán (giai đoạn 3–11).
-Chi tiết và hướng dẫn kiểm tra giao diện: docs/phase-2.md.
+Các menu đã có dữ liệu và thao tác thực: profile/QR, bạn bè/nhóm, khách hàng/nhãn/tệp,
+chiến dịch/lịch gửi/kịch bản, inbox, báo cáo CSV, gói/đơn hàng/chuyển khoản thủ công,
+affiliate, quản trị tài khoản/quyền, node/proxy, kiểm duyệt, cấu hình và audit.
+Quyền owner, hạn mức và opt-out được kiểm ở server. Kết quả Zalo phải do APP agent xác nhận;
+web không gửi tin hoặc kết nối Zalo giả. Thanh toán và chi hoa hồng được đối chiếu thủ công.
+Ảnh/tệp trong tin nhắn, cổng thanh toán tự động và nhiều agent độc lập cần hợp đồng mở rộng.
+docs/phase-2.md được giữ làm lịch sử giai đoạn dựng khung giao diện.
 
 ## Môi trường
 
@@ -81,12 +88,14 @@ thì không cần chạy Vite dev server để xem ứng dụng.
 Redis dùng Predis vì PHP hiện tại không có extension phpredis. Cấu hình .env:
 QUEUE_CONNECTION=redis, CACHE_DRIVER=redis, REDIS_CLIENT=predis.
 
-Khi có job và scheduler ở các giai đoạn sau:
+Scheduler cần chạy cho kịch bản tự động, dọn QR và hết hạn đơn/gói:
 
 ```powershell
 php artisan queue:work redis --tries=3 --timeout=90
 php artisan schedule:work
 ```
+
+Polling agent hiện không yêu cầu queue worker; chỉ cần schedule:work cho nghiệp vụ định kỳ.
 
 BROADCAST_DRIVER hiện để log. Echo chỉ mở kết nối khi VITE_PUSHER_APP_KEY có giá trị.
 Khi cấu hình Soketi ở giai đoạn realtime, đặt PUSHER_APP_ID/KEY/SECRET khớp Soketi,

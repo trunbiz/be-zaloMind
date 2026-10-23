@@ -2,13 +2,16 @@
 
 ## Tài liệu API bàn giao đội APP
 
-- [Hợp đồng API App A/agent kết nối Zalo](api-app-integration.md): node/token,
+- [Hợp đồng API App A/agent kết nối Zalo](api-app-integration.md): key chung `.env`,
   heartbeat, nhận lệnh, lease, QR, trả kết quả, sự kiện và đồng bộ dữ liệu.
 - [API người dùng và quản trị](api-platform.md): tài khoản, profile, gói dịch vụ,
   đơn hàng/thanh toán và vận hành admin.
 
-Hai tài liệu trên là **hợp đồng đề xuất để triển khai**, không phải API đã có ở giai đoạn 2.
-API hiện tại chỉ có `GET /api/user` được bảo vệ bằng Sanctum.
+Tại mốc giai đoạn 2 chỉ có `GET /api/user` được bảo vệ bằng Sanctum.
+Cập nhật 21/10/2026: đã triển khai 12 endpoint agent và migration tương ứng;
+API người dùng/admin và toàn bộ menu nghiệp vụ đã được triển khai.
+Xem [hướng dẫn vận hành hiện tại](platform-implementation.md).
+Các phần mô tả bên dưới là lịch sử của giai đoạn dựng giao diện, không phải trạng thái hiện tại.
 
 Theo yêu cầu tiếp theo của chủ dự án, tự tạo bộ brand thay cho bộ chưa được cung cấp.
 Logo là biểu tượng hội thoại với chữ m kết nối và chấm xanh bạc hà. Chữ zaloMind
